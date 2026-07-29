@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "yiShu": {
+    "directory": "C:\\Program Files\\YiShu",
+    "interface": "misas",
+    "processName": "翼枢"
+  },
+  "routing": {
+    "minimumPrefixLength": 8,
+    "infrastructurePrefixes": [
+      "1.2.3.4/32",
+      "172.28.160.193/32"
+    ],
+    "resourcePrefixes": [
+      "172.27.103.0/24",
+      "172.28.72.0/24",
+      "172.29.16.0/24"
+    ]
+  }
+}
