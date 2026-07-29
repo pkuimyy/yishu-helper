@@ -43,4 +43,4 @@ if ($RemoveData) {
     }
 }
 
-Write-Host '卸载完成。未指定 -RemoveData 时会保留配置、日志和迁移备份。' -ForegroundColor Green
+Write-Host '卸载完成。未指定 -RemoveData 时会保留配置、状态和日志。' -ForegroundColor Green

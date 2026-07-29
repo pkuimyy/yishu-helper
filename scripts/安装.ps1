@@ -20,46 +20,14 @@ if (-not (Test-Administrator)) {
 }
 
 $serviceName = 'YiShuHelper'
-$legacyServiceName = 'YiShuSplit'
 $installDirectory = Join-Path $env:ProgramFiles 'YiShuHelper'
 $dataDirectory = Join-Path $env:ProgramData 'YiShuHelper'
-$migrationDirectory = Join-Path $dataDirectory ('migration-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 $serviceSource = Join-Path $ArtifactsDirectory 'service'
 $traySource = Join-Path $ArtifactsDirectory 'tray'
 $configurationSource = Join-Path $ArtifactsDirectory 'yishu-split-config.json'
 
 foreach ($path in @($serviceSource, $traySource, $configurationSource)) {
     if (-not (Test-Path -LiteralPath $path)) { throw "缺少发布产物：$path" }
-}
-
-$legacyService = Get-Service -Name $legacyServiceName -ErrorAction SilentlyContinue
-if ($legacyService) {
-    New-Item -ItemType Directory -Path $migrationDirectory -Force | Out-Null
-    $legacyDirectory = Join-Path $env:LOCALAPPDATA 'YiShu-Split'
-    foreach ($name in @('settings.json', 'yishu-split-config.json', 'yishu-resources.json', 'README.md')) {
-        $source = Join-Path $legacyDirectory $name
-        if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination $migrationDirectory -Force }
-    }
-    if ($legacyService.Status -ne 'Stopped') {
-        Stop-Service -Name $legacyServiceName -Force
-        (Get-Service -Name $legacyServiceName).WaitForStatus('Stopped', [TimeSpan]::FromSeconds(40))
-    }
-    & sc.exe delete $legacyServiceName | Out-Null
-}
-
-# 仅清理由旧工具写入的托管区块；正式应用此后不再管理 hosts。
-$hostsPath = Join-Path $env:SystemRoot 'System32\drivers\etc\hosts'
-if (Test-Path -LiteralPath $hostsPath) {
-    $hostsText = [IO.File]::ReadAllText($hostsPath)
-    $cleaned = [Text.RegularExpressions.Regex]::Replace(
-        $hostsText,
-        '(?ms)^# BEGIN YiShu-Split managed hosts\r?\n.*?^# END YiShu-Split managed hosts\r?\n?',
-        '')
-    if ($cleaned -ne $hostsText) {
-        New-Item -ItemType Directory -Path $migrationDirectory -Force | Out-Null
-        Copy-Item -LiteralPath $hostsPath -Destination (Join-Path $migrationDirectory 'hosts.before-migration') -Force
-        [IO.File]::WriteAllText($hostsPath, $cleaned, [Text.UTF8Encoding]::new($false))
-    }
 }
 
 $existing = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
