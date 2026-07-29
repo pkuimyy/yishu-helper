@@ -1,2 +1,6 @@
 .codex/
 legacy/
+**/bin/
+**/obj/
+artifacts/
+*.user

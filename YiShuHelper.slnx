@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="src/YiShuHelper.Core/YiShuHelper.Core.csproj" />
+  <Project Path="src/YiShuHelper.Service/YiShuHelper.Service.csproj" />
+  <Project Path="src/YiShuHelper.Tray/YiShuHelper.Tray.csproj" />
+  <Project Path="tests/YiShuHelper.SelfTests/YiShuHelper.SelfTests.csproj" />
+  <Project Path="tests/YiShuHelper.PipeProbe/YiShuHelper.PipeProbe.csproj" />
+</Solution>

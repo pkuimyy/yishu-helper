@@ -1,0 +1,103 @@
+[CmdletBinding()]
+param(
+    [string]$ArtifactsDirectory = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts')
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+if ($PSVersionTable.PSVersion.Major -lt 7) { throw '请使用 PowerShell 7 或更高版本运行此脚本。' }
+
+function Test-Administrator {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    ([Security.Principal.WindowsPrincipal]$identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+if (-not (Test-Administrator)) {
+    $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $PSCommandPath, '-ArtifactsDirectory', $ArtifactsDirectory)
+    $hostExecutable = (Get-Process -Id $PID).Path
+    Start-Process -FilePath $hostExecutable -ArgumentList $arguments -Verb RunAs -Wait
+    exit
+}
+
+$serviceName = 'YiShuHelper'
+$legacyServiceName = 'YiShuSplit'
+$installDirectory = Join-Path $env:ProgramFiles 'YiShuHelper'
+$dataDirectory = Join-Path $env:ProgramData 'YiShuHelper'
+$migrationDirectory = Join-Path $dataDirectory ('migration-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+$serviceSource = Join-Path $ArtifactsDirectory 'service'
+$traySource = Join-Path $ArtifactsDirectory 'tray'
+$configurationSource = Join-Path $ArtifactsDirectory 'yishu-split-config.json'
+
+foreach ($path in @($serviceSource, $traySource, $configurationSource)) {
+    if (-not (Test-Path -LiteralPath $path)) { throw "缺少发布产物：$path" }
+}
+
+$legacyService = Get-Service -Name $legacyServiceName -ErrorAction SilentlyContinue
+if ($legacyService) {
+    New-Item -ItemType Directory -Path $migrationDirectory -Force | Out-Null
+    $legacyDirectory = Join-Path $env:LOCALAPPDATA 'YiShu-Split'
+    foreach ($name in @('settings.json', 'yishu-split-config.json', 'yishu-resources.json', 'README.md')) {
+        $source = Join-Path $legacyDirectory $name
+        if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination $migrationDirectory -Force }
+    }
+    if ($legacyService.Status -ne 'Stopped') {
+        Stop-Service -Name $legacyServiceName -Force
+        (Get-Service -Name $legacyServiceName).WaitForStatus('Stopped', [TimeSpan]::FromSeconds(40))
+    }
+    & sc.exe delete $legacyServiceName | Out-Null
+}
+
+# 仅清理由旧工具写入的托管区块；正式应用此后不再管理 hosts。
+$hostsPath = Join-Path $env:SystemRoot 'System32\drivers\etc\hosts'
+if (Test-Path -LiteralPath $hostsPath) {
+    $hostsText = [IO.File]::ReadAllText($hostsPath)
+    $cleaned = [Text.RegularExpressions.Regex]::Replace(
+        $hostsText,
+        '(?ms)^# BEGIN YiShu-Split managed hosts\r?\n.*?^# END YiShu-Split managed hosts\r?\n?',
+        '')
+    if ($cleaned -ne $hostsText) {
+        New-Item -ItemType Directory -Path $migrationDirectory -Force | Out-Null
+        Copy-Item -LiteralPath $hostsPath -Destination (Join-Path $migrationDirectory 'hosts.before-migration') -Force
+        [IO.File]::WriteAllText($hostsPath, $cleaned, [Text.UTF8Encoding]::new($false))
+    }
+}
+
+$existing = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+if ($existing) {
+    if ($existing.Status -ne 'Stopped') {
+        Stop-Service -Name $serviceName
+        (Get-Service -Name $serviceName).WaitForStatus('Stopped', [TimeSpan]::FromSeconds(40))
+    }
+    & sc.exe delete $serviceName | Out-Null
+    Start-Sleep -Seconds 1
+}
+
+New-Item -ItemType Directory -Path (Join-Path $installDirectory 'service'),(Join-Path $installDirectory 'tray'),$dataDirectory -Force | Out-Null
+Copy-Item -Path (Join-Path $serviceSource '*') -Destination (Join-Path $installDirectory 'service') -Recurse -Force
+Copy-Item -Path (Join-Path $traySource '*') -Destination (Join-Path $installDirectory 'tray') -Recurse -Force
+if (-not (Test-Path -LiteralPath (Join-Path $dataDirectory 'yishu-split-config.json'))) {
+    Copy-Item -LiteralPath $configurationSource -Destination (Join-Path $dataDirectory 'yishu-split-config.json')
+}
+
+$account = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+& icacls.exe $dataDirectory /grant "${account}:(OI)(CI)M" /T /Q | Out-Null
+
+$serviceExecutable = Join-Path $installDirectory 'service\YiShuHelper.Service.exe'
+New-Service -Name $serviceName -BinaryPathName ('"{0}"' -f $serviceExecutable) `
+    -DisplayName '翼枢分流助手' -Description '持续维护翼枢 WireGuard 窄分流。' -StartupType Automatic | Out-Null
+& sc.exe config $serviceName start= delayed-auto | Out-Null
+if ($LASTEXITCODE -ne 0) { throw '设置服务延迟启动失败。' }
+& sc.exe failure $serviceName reset= 86400 actions= restart/5000/restart/15000/none/0 | Out-Null
+if ($LASTEXITCODE -ne 0) { throw '设置服务恢复策略失败。' }
+
+$startup = [Environment]::GetFolderPath('Startup')
+$shortcutPath = Join-Path $startup '翼枢分流助手.lnk'
+$shell = New-Object -ComObject WScript.Shell
+$shortcut = $shell.CreateShortcut($shortcutPath)
+$shortcut.TargetPath = Join-Path $installDirectory 'tray\YiShuHelper.Tray.exe'
+$shortcut.WorkingDirectory = Join-Path $installDirectory 'tray'
+$shortcut.Description = '翼枢分流助手托盘'
+$shortcut.Save()
+
+Start-Service -Name $serviceName
+Write-Host '安装完成。后台服务已启动；托盘将在下次登录时自动启动。' -ForegroundColor Green
