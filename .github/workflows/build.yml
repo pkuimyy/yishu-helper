@@ -1,0 +1,84 @@
+name: Build and release
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.300
+
+      - name: Build, test, and package
+        shell: pwsh
+        run: ./scripts/发布.ps1
+
+      - name: Verify package contents
+        shell: pwsh
+        run: |
+          $archive = './artifacts/YiShuHelper-win-x64.zip'
+          $destination = Join-Path $env:RUNNER_TEMP 'yishu-helper-package-check'
+          Expand-Archive -LiteralPath $archive -DestinationPath $destination
+          $requiredFiles = @(
+            '安装.ps1',
+            '卸载.ps1',
+            '安装.cmd',
+            '卸载.cmd',
+            'README.md',
+            'yishu-split-config.json',
+            'service/YiShuHelper.Service.exe',
+            'tray/YiShuHelper.Tray.exe'
+          )
+          foreach ($relativePath in $requiredFiles) {
+            if (-not (Test-Path -LiteralPath (Join-Path $destination $relativePath))) {
+              throw "安装包缺少文件：$relativePath"
+            }
+          }
+          & cmd.exe /D /C (Join-Path $destination '安装.cmd') --validate
+          if ($LASTEXITCODE -ne 0) {
+            throw 'CMD 安装脚本验证失败。'
+          }
+
+      - name: Upload installable artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: YiShuHelper-win-x64
+          path: |
+            artifacts/YiShuHelper-win-x64.zip
+            artifacts/YiShuHelper-win-x64.zip.sha256
+          if-no-files-found: error
+          compression-level: 0
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download installable artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: YiShuHelper-win-x64
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            artifacts/YiShuHelper-win-x64.zip
+            artifacts/YiShuHelper-win-x64.zip.sha256
+          generate_release_notes: true

@@ -30,6 +30,8 @@ if ($service) {
 
 Get-Process -Name 'YiShuHelper.Tray' -ErrorAction SilentlyContinue | Stop-Process
 Remove-Item -LiteralPath (Join-Path ([Environment]::GetFolderPath('Startup')) '翼枢分流助手.lnk') -Force -ErrorAction SilentlyContinue
+Remove-ItemProperty -LiteralPath 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' `
+    -Name 'YiShuHelper' -Force -ErrorAction SilentlyContinue
 
 $installDirectory = Join-Path $env:ProgramFiles 'YiShuHelper'
 if ((Split-Path -Leaf $installDirectory) -eq 'YiShuHelper' -and (Test-Path -LiteralPath $installDirectory)) {

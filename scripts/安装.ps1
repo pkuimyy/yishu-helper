@@ -1,11 +1,22 @@
 [CmdletBinding()]
 param(
-    [string]$ArtifactsDirectory = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts')
+    [string]$ArtifactsDirectory
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if ($PSVersionTable.PSVersion.Major -lt 7) { throw '请使用 PowerShell 7 或更高版本运行此脚本。' }
+
+if ([string]::IsNullOrWhiteSpace($ArtifactsDirectory)) {
+    $coLocatedArtifacts = $PSScriptRoot
+    $repositoryArtifacts = Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts'
+    if (Test-Path -LiteralPath (Join-Path $coLocatedArtifacts 'service')) {
+        $ArtifactsDirectory = $coLocatedArtifacts
+    } else {
+        $ArtifactsDirectory = $repositoryArtifacts
+    }
+}
+$ArtifactsDirectory = [IO.Path]::GetFullPath($ArtifactsDirectory)
 
 function Test-Administrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -13,10 +24,15 @@ function Test-Administrator {
 }
 
 if (-not (Test-Administrator)) {
-    $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $PSCommandPath, '-ArtifactsDirectory', $ArtifactsDirectory)
+    $arguments = @(
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', ('"{0}"' -f $PSCommandPath),
+        '-ArtifactsDirectory', ('"{0}"' -f $ArtifactsDirectory)
+    )
     $hostExecutable = (Get-Process -Id $PID).Path
-    Start-Process -FilePath $hostExecutable -ArgumentList $arguments -Verb RunAs -Wait
-    exit
+    $elevatedProcess = Start-Process -FilePath $hostExecutable -ArgumentList $arguments -Verb RunAs -Wait -PassThru
+    exit $elevatedProcess.ExitCode
 }
 
 $serviceName = 'YiShuHelper'
