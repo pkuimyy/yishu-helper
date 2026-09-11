@@ -27,7 +27,7 @@ if defined VALIDATE_ONLY (
 fltmc >nul 2>&1
 if errorlevel 1 (
     echo Administrator privileges are required.
-    echo Right-click this CMD file and select "Run as administrator".
+    echo Right-click install.cmd and select "Run as administrator".
     pause
     exit /b 1
 )
@@ -77,12 +77,12 @@ if errorlevel 1 goto command_failed
 sc.exe failure "%SERVICE_NAME%" reset= 86400 actions= restart/5000/restart/15000/none/0 >nul
 if errorlevel 1 goto command_failed
 
-reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v YiShuHelper /t REG_SZ /d "\"%INSTALL_DIR%\tray\YiShuHelper.Tray.exe\"" /f >nul
-if errorlevel 1 goto command_failed
 sc.exe start "%SERVICE_NAME%" >nul
 if errorlevel 1 goto command_failed
 
-echo Installation completed. The service is running and the tray app will start at the next sign-in.
+echo Installation completed. Install directory: %INSTALL_DIR%
+echo The service is running. To enable the tray, manually run:
+echo %INSTALL_DIR%\tray\YiShuHelper.Tray.exe
 exit /b 0
 
 :wait_for_service_stop

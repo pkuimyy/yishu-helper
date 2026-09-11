@@ -3,7 +3,7 @@ setlocal EnableExtensions DisableDelayedExpansion
 fltmc >nul 2>&1
 if errorlevel 1 (
     echo Administrator privileges are required.
-    echo Right-click this CMD file and select "Run as administrator".
+    echo Right-click uninstall.cmd and select "Run as administrator".
     pause
     exit /b 1
 )

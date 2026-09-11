@@ -45,4 +45,4 @@ if ($RemoveData) {
     }
 }
 
-Write-Host '卸载完成。未指定 -RemoveData 时会保留配置、状态和日志。' -ForegroundColor Green
+Write-Host '卸载完成。默认保留配置、状态和日志；使用 -RemoveData 可一并删除。' -ForegroundColor Green

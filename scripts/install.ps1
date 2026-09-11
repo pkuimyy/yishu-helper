@@ -74,14 +74,7 @@ if ($LASTEXITCODE -ne 0) { throw '设置服务延迟启动失败。' }
 & sc.exe failure $serviceName reset= 86400 actions= restart/5000/restart/15000/none/0 | Out-Null
 if ($LASTEXITCODE -ne 0) { throw '设置服务恢复策略失败。' }
 
-$startup = [Environment]::GetFolderPath('Startup')
-$shortcutPath = Join-Path $startup '翼枢分流助手.lnk'
-$shell = New-Object -ComObject WScript.Shell
-$shortcut = $shell.CreateShortcut($shortcutPath)
-$shortcut.TargetPath = Join-Path $installDirectory 'tray\YiShuHelper.Tray.exe'
-$shortcut.WorkingDirectory = Join-Path $installDirectory 'tray'
-$shortcut.Description = '翼枢分流助手托盘'
-$shortcut.Save()
-
 Start-Service -Name $serviceName
-Write-Host '安装完成。后台服务已启动；托盘将在下次登录时自动启动。' -ForegroundColor Green
+$trayExecutable = Join-Path $installDirectory 'tray\YiShuHelper.Tray.exe'
+Write-Host "安装完成。应用安装目录：$installDirectory" -ForegroundColor Green
+Write-Host "后台服务已启动。如需启用托盘，请手动运行：$trayExecutable" -ForegroundColor Yellow

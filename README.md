@@ -1,41 +1,44 @@
-# 翼枢分流助手
+# YiShu Split Helper
 
-本目录是翼枢分流助手的正式开发目录。
+[简体中文](README.zh-CN.md)
 
-项目使用 Windows 后台服务持续维护翼枢窄分流，并通过托盘程序显示状态和接受启用、关闭操作。正式应用只管理 Windows 路由和 WireGuard `AllowedIPs`，不管理 DNS 或 hosts。
+This repository contains the production source code for YiShu Split Helper.
 
-## 目录说明
+The application uses a Windows service to continuously maintain narrow split routing for YiShu, while a system tray application displays its status and provides enable/disable controls. It manages only Windows routes and WireGuard `AllowedIPs`; it does not manage DNS or the hosts file.
 
-- `doc`：正式方案和设计说明。
-- `config`：精简配置样例。
-- `src`：正式 C# 源代码，包括共享核心、Windows 服务和托盘程序。
-- `tests`：不依赖外部测试框架的离线自检。
-- `scripts`：发布、安装和卸载脚本。
+## Repository layout
 
-## 开发验证
+- `doc`: Design and user documentation.
+- `config`: Minimal configuration example.
+- `src`: C# source code for the shared core, Windows service, and tray application.
+- `tests`: Offline self-tests without an external test framework.
+- `scripts`: Build, installation, and uninstallation scripts.
 
-以下脚本统一使用 PowerShell 7 或更高版本运行。
+## Development validation
+
+The following commands require PowerShell 7 or later:
 
 ```powershell
 dotnet build .\YiShuHelper.slnx -c Debug
 dotnet run --project .\tests\YiShuHelper.SelfTests\YiShuHelper.SelfTests.csproj -c Debug
 ```
 
-## 发布
+## Publishing
 
 ```powershell
 .\scripts\发布.ps1
 ```
 
-发布结果位于 `artifacts`。使用 `scripts\安装.ps1` 安装或升级正式应用。
+Build output is written to `artifacts`. Use `scripts\install.ps1` to install or upgrade the application from the repository.
 
-发布脚本还会生成可分发文件 `artifacts\YiShuHelper-win-x64.zip` 及其 SHA-256 校验文件。
-解压 ZIP 后，以 PowerShell 7 运行其中的 `安装.ps1` 即可安装或升级；脚本会自动请求管理员权限。
-不使用 PowerShell 的用户可以右键单击 `安装.cmd` 并选择“以管理员身份运行”。CMD 版本仅使用 Windows 自带工具。
-对应的 `卸载.cmd` 支持原生 CMD 卸载；添加 `--remove-data` 参数可同时删除配置、状态和日志。
+The publishing script also creates the distributable archive `artifacts\YiShuHelper-win-x64.zip` and its SHA-256 checksum file. After extracting the archive, PowerShell users can run `install.ps1`; the script requests administrator privileges automatically.
+
+Users who do not use PowerShell can right-click `install.cmd` and select **Run as administrator**. The CMD version uses only built-in Windows tools. The corresponding `uninstall.cmd` performs uninstallation from CMD; pass `--remove-data` to also delete configuration, state, and logs.
+
+The installer starts the background service but does not register the tray application for automatic startup. It prints the installation directory when it finishes. To enable the tray, manually run `C:\Program Files\YiShuHelper\tray\YiShuHelper.Tray.exe` after installation.
 
 ## GitHub CI
 
-- 推送和拉取请求会在 Windows runner 上执行 Release 构建、离线自检并生成可安装 ZIP。
-- 每次运行均可从 Actions 页面下载 `YiShuHelper-win-x64` 制品。
-- 推送形如 `v0.1.3` 的标签时，会创建 GitHub Release，并附加 ZIP 和 SHA-256 校验文件。
+- Pushes and pull requests run the Release build and offline self-tests on a Windows runner, then produce an installable ZIP.
+- Every workflow run provides a `YiShuHelper-win-x64` artifact on its Actions page.
+- Pushing a tag such as `v0.1.3` creates a GitHub Release containing the ZIP and its SHA-256 checksum file.

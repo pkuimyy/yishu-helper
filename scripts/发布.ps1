@@ -47,11 +47,12 @@ New-Item -ItemType Directory -Path $packageDirectory -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $artifacts 'service') -Destination $packageDirectory -Recurse
 Copy-Item -LiteralPath (Join-Path $artifacts 'tray') -Destination $packageDirectory -Recurse
 Copy-Item -LiteralPath (Join-Path $artifacts 'yishu-split-config.json') -Destination $packageDirectory
-Copy-Item -LiteralPath (Join-Path $root 'scripts\安装.ps1') -Destination $packageDirectory
-Copy-Item -LiteralPath (Join-Path $root 'scripts\卸载.ps1') -Destination $packageDirectory
-Copy-Item -LiteralPath (Join-Path $root 'scripts\安装.cmd') -Destination $packageDirectory
-Copy-Item -LiteralPath (Join-Path $root 'scripts\卸载.cmd') -Destination $packageDirectory
+Copy-Item -LiteralPath (Join-Path $root 'scripts\install.ps1') -Destination $packageDirectory
+Copy-Item -LiteralPath (Join-Path $root 'scripts\uninstall.ps1') -Destination $packageDirectory
+Copy-Item -LiteralPath (Join-Path $root 'scripts\install.cmd') -Destination $packageDirectory
+Copy-Item -LiteralPath (Join-Path $root 'scripts\uninstall.cmd') -Destination $packageDirectory
 Copy-Item -LiteralPath (Join-Path $root 'README.md') -Destination $packageDirectory
+Copy-Item -LiteralPath (Join-Path $root 'README.zh-CN.md') -Destination $packageDirectory
 
 Compress-Archive -Path (Join-Path $packageDirectory '*') -DestinationPath $archivePath -CompressionLevel Optimal
 $archiveHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()

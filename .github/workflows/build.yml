@@ -32,11 +32,12 @@ jobs:
           $destination = Join-Path $env:RUNNER_TEMP 'yishu-helper-package-check'
           Expand-Archive -LiteralPath $archive -DestinationPath $destination
           $requiredFiles = @(
-            '安装.ps1',
-            '卸载.ps1',
-            '安装.cmd',
-            '卸载.cmd',
+            'install.ps1',
+            'uninstall.ps1',
+            'install.cmd',
+            'uninstall.cmd',
             'README.md',
+            'README.zh-CN.md',
             'yishu-split-config.json',
             'service/YiShuHelper.Service.exe',
             'tray/YiShuHelper.Tray.exe'
@@ -46,7 +47,7 @@ jobs:
               throw "安装包缺少文件：$relativePath"
             }
           }
-          & cmd.exe /D /C (Join-Path $destination '安装.cmd') --validate
+          & cmd.exe /D /C (Join-Path $destination 'install.cmd') --validate
           if ($LASTEXITCODE -ne 0) {
             throw 'CMD 安装脚本验证失败。'
           }
